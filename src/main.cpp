@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 	while (aptMainLoop()) {
 
 		hidScanInput();
-		u32 kDown = hidKeysDown();// u32 kHeld = hidKeysHeld(); u32 kUp = hidKeysUp();
+		u32 kDown = hidKeysDown(); u32 kHeld = hidKeysHeld();// u32 kUp = hidKeysUp();
 		if (kDown & KEY_START) break;
 		if (kDown & KEY_A) paused = !paused;
 		if (kDown & KEY_X) box.vx += 10;
@@ -70,17 +70,19 @@ int main(int argc, char **argv) {
 		// move crosshair
 		circlePosition pos;
 		hidCircleRead(&pos);
-
-		//Print the CirclePad position
-		printf("\x1b[8;1H%04d; %04d", pos.dx, pos.dy);
-
-		if (pos.dx > 10 || pos.dx < -10) cross.x += (pos.dx / 154) * crossSens;
-		if (pos.dy > 10 || pos.dy < -10) cross.y -= (pos.dy / 154) * crossSens;
-
+		if (pos.dx > 40 || pos.dx < -40) cross.x += (pos.dx / 154) * crossSens;
+		if (pos.dy > 40 || pos.dy < -40) cross.y -= (pos.dy / 154) * crossSens;
 		if (cross.x > S_WIDTH) cross.x = S_WIDTH;
 		if (cross.x < 0) cross.x = 0;
 		if (cross.y > S_HEIGHT) cross.y = S_HEIGHT;
 		if (cross.y < 0) cross.y = 0;
+
+		if (kHeld & KEY_DUP) cross.y -= 1;
+		if (kHeld & KEY_DDOWN) cross.y += 1;
+		if (kHeld & KEY_DLEFT) cross.x -= 1;
+		if (kHeld & KEY_DRIGHT) cross.x += 1;
+
+		if (kDown & KEY_SELECT) { box.vy = 0; box.vx = 0; }
 
 		// calculate physics
 		if (!paused) {
