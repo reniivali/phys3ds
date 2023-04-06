@@ -1,7 +1,7 @@
 .SUFFIXES:
 
 ifeq ($(strip $(DEVKITARM)),)
-	$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to devkitARM>")
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to devkitARM>")
 endif
 
 TOPDIR ?= $(CURDIR)
@@ -10,6 +10,8 @@ include $(DEVKITARM)/3ds_rules
 TARGET := bin/phys
 BUILD := build
 SOURCES := src
+DATA := data
+INCLUDES := include
 
 APP_TITLE := Phys3DS
 APP_DESCRIPTION := Physics simulator for the Nintendo 3DS
@@ -28,25 +30,25 @@ LIBDIRS := $(CTRULIB)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) $(foreach dir,$(DATA),$(CURDIR)/$(dir))
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
 #files
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.*)))
+BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 # use CCX for linking if we have C++ files
 ifeq ($(strip $(CPPFILES)),)
-	export LD	:=	$(CC)
+	export LD := $(CC)
 else
-	export LD	:=	$(CXX)
+	export LD := $(CXX)
 endif
 
-export OFILES_SOURCES := $(CPPFILES:.ccp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+export OFILES_SOURCES := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 export OFILES_BIN := $(addsuffix .o,$(BINFILES))
-export OFILES := $(OFILES_SOURCES) $(OFILES_BIN)
+export OFILES := $(OFILES_BIN) $(OFILES_SOURCES)
 
 export HFILES := $(addsuffix .h,$(subst .,_,$(BINFILES)))
 
@@ -72,13 +74,12 @@ else
 endif
 
 ifeq ($(strip $(NO_SMDH)),)
-	export _3DSXFLAGS += --smndh=$(CURDUR)/$(TARGET).smdh
+	export _3DSXFLAGS += --smdh=$(CURDIR)/$(TARGET).smdh
 endif
 
 .PHONY: all clean
 
 all: $(BUILD) $(DEPSDIR)
-	@echo build: $(BUILD)  DEPSDIR: $(DEPSDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 $(BUILD):
@@ -91,12 +92,8 @@ $(DEPSDIR):
 endif
 
 clean:
-	@echo cleaning...
+	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf
-
-$(BUILD)/%.t3x $(BUILD)/%.h : %.t3x
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $(BUILD)/$*.h -d $(DEPSDIR)/$*.d -o $(BUILD)/$*.t3x
 
 else
 
@@ -107,15 +104,6 @@ $(OUTPUT).elf : $(OFILES)
 %.bin.o %_bin.h : %.bin
 	@echo $(notdir $<)
 	@$(bin2o)
-
-.PRECIOUS : %t3x
-%t3x.0 %_t3x.h : %t3x
-	@echo $(notdir $<)
-	@$(bin2o)
-
-%.t3x %.h : %.t3s
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $*.h -d $*.d -o $*.t3x
 
 -include $(DEPSDIR)/*.d
 
