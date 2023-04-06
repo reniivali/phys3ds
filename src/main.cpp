@@ -62,13 +62,10 @@ int main(int argc, char **argv) {
 			box.y += box.vy;
 
 			if (box.y + box.h > S_HEIGHT) { box.y = S_HEIGHT - box.h; box.vy = -box.vy * box.bounce; }
-			if (box.y < 0) { box.y = 0; box.vy = box.vy * box.bounce; }
+			if (box.y < 0) { box.y = 0; box.vy = -box.vy * box.bounce; }
 
 			if (box.x + box.w > S_WIDTH) { box.x = S_WIDTH - box.w; box.vx = -box.vx * box.bounce; }
-			if (box.x < 0) { box.x = 0; box.vx = box.vx * box.bounce; }
-
-			if (box.vx < 0.5f) box.vx = 0;
-			if (box.vy < 0.5f) box.vy = 0;
+			if (box.x < 0) { box.x = 0; box.vx = -box.vx * box.bounce; }
 		}
 		// Render scene
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
