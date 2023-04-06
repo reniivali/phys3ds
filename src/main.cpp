@@ -18,8 +18,21 @@ struct object {
 	float bounce;
 };
 
+struct crosshair {
+	float x, y;
+};
+
+crosshair cross = { S_WIDTH / 2, S_HEIGHT / 2 };
+
+void renderCrosshair() {
+	C2D_DrawRectSolid(cross.x - 10, cross.y - 2, 0, 20, 4, C2D_Color32(0x50, 0x50, 0x50, 0xFF));
+	C2D_DrawRectSolid(cross.x - 2, cross.y - 10, 0, 4, 20, C2D_Color32(0x50, 0x50, 0x50, 0xFF));
+}
+
 bool paused = true;
 float gravity = 0.75f;
+float crossSens = 3.0f;
+float expForce = 20.0f;
 object box = { 20, 20, 20, 20, 0, 0, 0, 0.9f};
 
 int main(int argc, char **argv) {
@@ -54,6 +67,21 @@ int main(int argc, char **argv) {
 		printf("\x1b[6;0HBoxPos x/y: %f/%f", box.x, box.y);
 		if (paused) printf("\x1b[7;0HPHYSICS PAUSED"); else printf("\x1b[7;0H              ");
 
+		// move crosshair
+		circlePosition pos;
+		hidCircleRead(&pos);
+
+		//Print the CirclePad position
+		printf("\x1b[8;1H%04d; %04d", pos.dx, pos.dy);
+
+		if (pos.dx > 10 || pos.dx < -10) cross.x += (pos.dx / 154) * crossSens;
+		if (pos.dy > 10 || pos.dy < -10) cross.y -= (pos.dy / 154) * crossSens;
+
+		if (cross.x > S_WIDTH) cross.x = S_WIDTH;
+		if (cross.x < 0) cross.x = 0;
+		if (cross.y > S_HEIGHT) cross.y = S_HEIGHT;
+		if (cross.y < 0) cross.y = 0;
+
 		// calculate physics
 		if (!paused) {
 			box.vy += gravity;
@@ -61,9 +89,18 @@ int main(int argc, char **argv) {
 			box.x += box.vx;
 			box.y += box.vy;
 
+			if (kDown & KEY_B) {
+				float difx = box.x - cross.x;
+				float dify = box.y - cross.y;
+
+				float dist = sqrt(difx * difx + dify * dify);
+				box.vx += ((difx / dist) * expForce)/dist*dist;
+				box.vy += ((dify / dist) * expForce)/dist*dist;
+			}
+
+			// OFFSCREEN COLLISION - KEEP AT BOTTOM
 			if (box.y + box.h > S_HEIGHT) { box.y = S_HEIGHT - box.h; box.vy = -box.vy * box.bounce; }
 			if (box.y < 0) { box.y = 0; box.vy = -box.vy * box.bounce; }
-
 			if (box.x + box.w > S_WIDTH) { box.x = S_WIDTH - box.w; box.vx = -box.vx * box.bounce; }
 			if (box.x < 0) { box.x = 0; box.vx = -box.vx * box.bounce; }
 		}
@@ -72,6 +109,8 @@ int main(int argc, char **argv) {
 		C2D_TargetClear(top, clrClear);
 		C2D_SceneBegin(top);
 		C2D_DrawRectSolid(box.x, box.y, 0, box.w, box.h, C2D_Color32(0x30, 0x30, 0x30, 0xFF));
+
+		renderCrosshair();
 
 		C3D_FrameEnd(0);
 
