@@ -17,7 +17,6 @@ struct object {
 	float r;
 	float bounce;
 	float mass;
-	float friction;
 };
 
 struct crosshair {
@@ -32,16 +31,32 @@ void renderCrosshair() {
 }
 
 bool paused = true;
+bool showPaths = false;
 float gravity = 0.75f;
 float crossSens = 3.0f;
 float expForce = 20.0f;
+float friction = 0.95f;
 
-int boxes = 4;
-object box[4] = {
-	{20, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.99f},
-	{50, 20, 30, 30, 0, 0, 0, 0.7f, 45, 0.99f},
-	{90, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.99f},
-	{120, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.99f}
+int boxes = 9;
+object box[9] = {
+	{20, 20, 20, 20, 0, 0, 0, 0.9f, 10},
+	{50, 20, 30, 30, 0, 0, 0, 0.7f, 45},
+	{90, 20, 20, 20, 0, 0, 0, 0.9f, 10},
+	{120, 20, 30, 30, 0, 0, 0, 0.9f, 45},
+	{160, 20, 20, 20, 0, 0, 0, 0.9f, 10},
+	{190, 20, 30, 30, 0, 0, 0, 0.9f, 45},
+	{230, 20, 20, 20, 0, 0, 0, 0.9f, 10},
+	{260, 20, 30, 30, 0, 0, 0, 0.9f, 45},
+	{300, 20, 20, 20, 0, 0, 0, 0.9f, 10}//,
+	/*{20, 100, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f},
+	{50, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.95f},
+	{90, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f},
+	{120, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.95f},
+	{160, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f},
+	{190, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.95f},
+	{230, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f},
+	{260, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.95f},
+	{300, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f}*/
 };
 
 static void drawGradientRect(float x, float y, float w, float h, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
@@ -68,17 +83,15 @@ int main(int argc, char **argv) {
 
 		hidScanInput();
 		u32 kDown = hidKeysDown(); u32 kHeld = hidKeysHeld();// u32 kUp = hidKeysUp();
-		if (kDown & KEY_START) break;
-		if (kDown & KEY_A) paused = !paused;
-		if (kDown & KEY_X) box[0].vx += 10;
-		if (kDown & KEY_Y) box[0].vy -= 10;
+		if (kDown & KEY_START) paused = !paused;
+		if (kDown & KEY_START && kHeld & KEY_R) break;
 
 		printf("\x1b[1;0HFrame: %i", frame);
 		printf("\x1b[2;0HCPU: %6.2f%% | GPU: %6.2f%%\x1b[K", C3D_GetProcessingTime()*6.0f, C3D_GetDrawingTime()*6.0f);
 		printf("\x1b[3;0HCmdBuf:  %6.2f%%\x1b[K", C3D_GetCmdBufUsage()*100.0f);
-
-		printf("\x1b[5;0HBoxVel x/y: %f/%f", box[0].vx, box[0].vy);
-		printf("\x1b[6;0HBoxPos x/y: %f/%f", box[0].x, box[0].y);
+		printf("\x1b[4;0HGravity: %f", gravity);
+		printf("\x1b[5;0HFriction: %f", friction);
+		printf("\x1b[6;0expForce: %f", expForce);
 		if (paused) printf("\x1b[7;0HPHYSICS PAUSED"); else printf("\x1b[7;0H              ");
 
 		// move crosshair
@@ -96,6 +109,17 @@ int main(int argc, char **argv) {
 		if (kHeld & KEY_DLEFT) cross.x -= 1;
 		if (kHeld & KEY_DRIGHT) cross.x += 1;
 
+		if (kDown & KEY_L) showPaths = !showPaths;
+
+		if (kHeld & KEY_ZL) friction -= 0.01f;
+		if (kHeld & KEY_ZR) friction += 0.01f;
+
+		if (kHeld & KEY_A) gravity += 0.01f;
+		if (kHeld & KEY_B) gravity -= 0.01f;
+
+		if (kHeld & KEY_X) expForce += 0.01f;
+		if (kHeld & KEY_Y) expForce -= 0.01f;
+
 		if (kDown & KEY_SELECT) {
 			for (int i = 0; i < boxes; i++) {
 				box[i].vx = 0;
@@ -111,9 +135,9 @@ int main(int argc, char **argv) {
 				box[i].x += box[i].vx;
 				box[i].y += box[i].vy;
 
-				if (box[i].vx != 0) box[i].vx *= box[i].friction;
+				if (box[i].vx != 0) box[i].vx *= friction;
 
-				if (kDown & KEY_B) {
+				if (kDown & KEY_R) {
 					float difx = box[i].x - cross.x;
 					float dify = box[i].y - cross.y;
 
@@ -155,6 +179,12 @@ int main(int argc, char **argv) {
 					float ny = dify / dist;
 					float tx = -ny;
 					float ty = nx;
+					//move boxes away from each other
+					float pen = (box[i].w / 2 + box[j].w / 2) - dist;
+					box[i].x += nx * pen;
+					box[i].y += ny * pen;
+					box[j].x -= nx * pen;
+					box[j].y -= ny * pen;
 					// calculate dot products
 					float dpTan1 = box[i].vx * tx + box[i].vy * ty;
 					float dpTan2 = box[j].vx * tx + box[j].vy * ty;
@@ -179,16 +209,54 @@ int main(int argc, char **argv) {
 
 		for (int i = 0; i < boxes; i++) {
 			drawGradientRect(box[i].x, box[i].y, box[i].w, box[i].h, 3, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
-			C2D_DrawLine(
-				box[i].x + box[i].w / 2,
-				box[i].y + box[i].h / 2,
-				C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
-				box[i].x + box[i].w / 2 + box[i].vx * 10,
-				box[i].y + box[i].h / 2 + box[i].vy * 10,
-				C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
-				2.0f,
-				0
-			);
+			if (showPaths) {
+				object tempBox = box[i];
+				for (int j = 0; j < 10; j++) {
+					if (j == 0) {
+						C2D_DrawLine(
+							box[i].x + box[i].w / 2,
+							box[i].y + box[i].h / 2,
+							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
+							box[i].x + box[i].w / 2 + box[i].vx,
+							box[i].y + box[i].h / 2 + box[i].vy,
+							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
+							2.0f,
+							0
+						);
+					} else {
+						tempBox.x += tempBox.vx;
+						tempBox.y += tempBox.vy;
+						tempBox.vy += gravity;
+						if (tempBox.vx != 0) tempBox.vx *= friction;
+						if (tempBox.y + tempBox.h > S_HEIGHT) {
+							tempBox.y = S_HEIGHT - tempBox.h;
+							tempBox.vy = -tempBox.vy * tempBox.bounce;
+						}
+						if (tempBox.y < 0) {
+							tempBox.y = 0;
+							tempBox.vy = -tempBox.vy * tempBox.bounce;
+						}
+						if (tempBox.x + tempBox.w > S_WIDTH) {
+							tempBox.x = S_WIDTH - tempBox.w;
+							tempBox.vx = -tempBox.vx * tempBox.bounce;
+						}
+						if (tempBox.x < 0) {
+							tempBox.x = 0;
+							tempBox.vx = -tempBox.vx * tempBox.bounce;
+						}
+						C2D_DrawLine(
+							tempBox.x + tempBox.w / 2,
+							tempBox.y + tempBox.h / 2,
+							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
+							tempBox.x + tempBox.w / 2 + tempBox.vx,
+							tempBox.y + tempBox.h / 2 + tempBox.vy,
+							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
+							2.0f,
+							0
+						);
+					}
+				}
+			}
 		}
 
 		renderCrosshair();
