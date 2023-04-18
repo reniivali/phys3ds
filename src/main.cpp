@@ -32,6 +32,10 @@ struct crosshair {
 	float x, y;
 };
 
+struct coord {
+	float x, y;
+};
+
 crosshair cross = { S_WIDTH / 2, S_HEIGHT / 2 };
 
 void renderCrosshair() {
@@ -153,7 +157,7 @@ int main(int argc, char **argv) {
 		printf("\x1b[3;0HCmdBuf:  %6.2f%%\x1b[K", C3D_GetCmdBufUsage()*100.0f);
 		printf("\x1b[4;0HGravity: %f", gravity);
 		printf("\x1b[5;0HFriction: %f", friction);
-		printf("\x1b[6;0expForce: %f", expForce);
+		printf("\x1b[6;0HexpForce: %f", expForce);
 		if (paused) printf("\x1b[7;0HPHYSICS PAUSED"); else printf("\x1b[7;0H              ");
 
 		// move crosshair
@@ -259,32 +263,48 @@ int main(int argc, char **argv) {
 				if (box[i].x + box[i].w > box[j].x && box[i].x < box[j].x + box[j].w && box[i].y + box[i].h > box[j].y && box[i].y < box[j].y + box[j].h) {
 					// collision detected
 					// calculate collision vector
-					float difx = box[i].x - box[j].x;
-					float dify = box[i].y - box[j].y;
+					float difx = abs(box[i].x - box[j].x);
+					float dify = abs(box[i].y - box[j].y);
+
+					coord center1 = { box[i].x + box[i].w / 2, box[i].y + box[i].h / 2 };
+					coord center2 = { box[j].x + box[j].w / 2, box[j].y + box[j].h / 2 };
+
+					float cDiffX = abs(center1.x - center2.x);
+					float cDiffY = abs(center1.y - center2.y);
+
 					float dist = sqrt(difx * difx + dify * dify);
 					float nx = difx / dist;
 					float ny = dify / dist;
-					float tx = -ny;
-					float ty = nx;
 					//move boxes away from each other
 					float pen = (box[i].w / 2 + box[j].w / 2) - dist;
 					box[i].x += nx * pen;
 					box[i].y += ny * pen;
 					box[j].x -= nx * pen;
 					box[j].y -= ny * pen;
-					// calculate dot products
-					float dpTan1 = box[i].vx * tx + box[i].vy * ty;
-					float dpTan2 = box[j].vx * tx + box[j].vy * ty;
-					float dpNorm1 = box[i].vx * nx + box[i].vy * ny;
-					float dpNorm2 = box[j].vx * nx + box[j].vy * ny;
-					// calculate new velocities
-					float m1 = (dpNorm1 * (box[i].mass - box[j].mass) + 2.0f * box[j].mass * dpNorm2) / (box[i].mass + box[j].mass);
-					float m2 = (dpNorm2 * (box[j].mass - box[i].mass) + 2.0f * box[i].mass * dpNorm1) / (box[i].mass + box[j].mass);
-					// update velocities
-					box[i].vx = tx * dpTan1 + nx * m1;
-					box[i].vy = ty * dpTan1 + ny * m1;
-					box[j].vx = tx * dpTan2 + nx * m2;
-					box[j].vy = ty * dpTan2 + ny * m2;
+
+					if (cDiffX > cDiffY) {
+						// collision on x axis
+						if (box[i].x < box[j].x) {
+							// box i is left of box j
+							box[i].x = box[j].x - box[i].w;
+						} else {
+							// box i is right of box j
+							box[i].x = box[j].x + box[j].w;
+						}
+						box[i].vx = -box[i].vx * box[i].bounce;
+						box[j].vx = -box[j].vx * box[j].bounce;
+					} else {
+						// collision on y axis
+						if (box[i].y < box[j].y) {
+							// box i is above box j
+							box[i].y = box[j].y - box[i].h;
+						} else {
+							// box i is below box j
+							box[i].y = box[j].y + box[j].h;
+						}
+						box[i].vy = -box[i].vy * box[i].bounce;
+						box[j].vy = -box[j].vy * box[j].bounce;
+					}
 				}
 			}
 		}
