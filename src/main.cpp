@@ -8,6 +8,8 @@
 #define S_WIDTH 400
 #define S_HEIGHT 240
 
+const float PI = atan(1) * 4;
+
 int frame = 0;
 
 struct object {
@@ -74,13 +76,83 @@ object box[9] = {
 
 predictions pred[9];
 
-
-
 static void drawGradientRect(float x, float y, float w, float h, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
 	C2D_DrawRectangle(x, y, 0, w, h, C2D_Color32(r1, g1, b1, opacity), C2D_Color32((r1*w/(w+h) + r2*h/(w+h)), (g1*w/(w+h) + g2*h/(w+h)), (b1*w/(w+h) + b2*h/(w+h)), opacity), C2D_Color32((r1*h/(w+h) + r2*w/(w+h)), (g1*h/(w+h) + g2*w/(w+h)), (b1*h/(w+h) + b2*w/(w+h)), opacity), C2D_Color32(r2, g2, b2, opacity));
 	C2D_DrawRectSolid(x + p, y + p, 0, w - p * 2, h - p * 2, color);
 }
 
+static float degToRad(float r) {
+	float rad = r * PI / 180;
+	return rad;
+}
+
+static void drawRotatedRect(float x, float y, float w, float h, float r, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
+	float lx = x + w / 2;
+	float ly = y + h / 2;
+	coord corn[8] = {
+		// Outer
+		// Top Left
+		{lx - ((w/2) * cos(r)) - ((h/2) * sin(r)),
+		 ly - ((w/2) * sin(r)) + ((h/2) * cos(r))},
+		// Top Right
+		{lx + ((w/2) * cos(r)) - ((h/2) * sin(r)),
+		 ly + ((w/2) * sin(r)) + ((h/2) * cos(r))},
+		// Bottom Right
+		{lx + ((w/2) * cos(r)) + ((h/2) * sin(r)),
+		 ly + ((w/2) * sin(r)) - ((h/2) * cos(r))},
+		// Bottom Left
+		{lx - ((w/2) * cos(r)) + ((h/2) * sin(r)),
+		 ly - ((w/2) * sin(r)) - ((h/2) * cos(r))},
+		// Inner
+		// Top Left
+		{lx - ((w/2 - p) * cos(r)) - ((h/2 - p) * sin(r)),
+		 ly - ((w/2 - p) * sin(r)) + ((h/2 - p) * cos(r))},
+		// Top Right
+		{lx + ((w/2 - p) * cos(r)) - ((h/2 - p) * sin(r)),
+		 ly + ((w/2 - p) * sin(r)) + ((h/2 - p) * cos(r))},
+		// Bottom Right
+		{lx + ((w/2 - p) * cos(r)) + ((h/2 - p) * sin(r)),
+		 ly + ((w/2 - p) * sin(r)) - ((h/2 - p) * cos(r))},
+		// Bottom Left
+		{lx - ((w/2 - p) * cos(r)) + ((h/2 - p) * sin(r)),
+		 ly - ((w/2 - p) * sin(r)) - ((h/2 - p) * cos(r))}
+	};
+	//right triangle
+	C2D_DrawTriangle(
+		corn[0].x, corn[0].y, C2D_Color32(r1, g1, b1, opacity),
+		corn[1].x, corn[1].y, C2D_Color32(
+			(r1*w/(w+h) + r2*h/(w+h)),
+			(g1*w/(w+h) + g2*h/(w+h)),
+			(b1*w/(w+h) + b2*h/(w+h)),
+			opacity),
+		corn[2].x, corn[2].y, C2D_Color32(r2, g2, b2, opacity), 0
+	);
+	//left triangle
+	C2D_DrawTriangle(
+		corn[0].x, corn[0].y, C2D_Color32(r1, g1, b1, opacity),
+		corn[3].x, corn[3].y, C2D_Color32(
+			(r1*h/(w+h) + r2*w/(w+h)),
+			(g1*h/(w+h) + g2*w/(w+h)),
+			(b1*h/(w+h) + b2*w/(w+h)),
+			opacity),
+		corn[2].x, corn[2].y, C2D_Color32(r2, g2, b2, opacity), 0
+	);
+
+	//right inner triangle
+	C2D_DrawTriangle(
+		corn[4].x, corn[4].y, color,
+		corn[5].x, corn[5].y, color,
+		corn[6].x, corn[6].y, color, 0
+	);
+	//left inner triangle
+	C2D_DrawTriangle(
+		corn[4].x, corn[4].y, color,
+		corn[7].x, corn[7].y, color,
+		corn[6].x, corn[6].y, color, 0
+	);
+}
+
+float rot = -0.05f;
 int main(int argc, char **argv) {
 	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -97,7 +169,8 @@ int main(int argc, char **argv) {
 	u32 clrClear = C2D_Color32(0x1E, 0x1E, 0x2E, 0xFF);
 
 	while (aptMainLoop()) {
-
+		rot++;
+		if (rot > 360) rot = 0;
 		//fill predictions array with positions of boxes over next 10 frames
 		for (int i = 0; i < boxes; i++) {
 			for (int j = 0; j < 10; j++) {
@@ -331,6 +404,8 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+
+		drawRotatedRect(100, 100, 50, 50, degToRad(rot), 5, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
 
 		renderCrosshair();
 
