@@ -19,6 +19,15 @@ struct object {
 	float mass;
 };
 
+struct predict {
+	float x, y;
+	float vx, vy;
+};
+
+struct predictions {
+	predict pr[10];
+};
+
 struct crosshair {
 	float x, y;
 };
@@ -59,6 +68,10 @@ object box[9] = {
 	{300, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f}*/
 };
 
+predictions pred[9];
+
+
+
 static void drawGradientRect(float x, float y, float w, float h, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
 	C2D_DrawRectangle(x, y, 0, w, h, C2D_Color32(r1, g1, b1, opacity), C2D_Color32((r1*w/(w+h) + r2*h/(w+h)), (g1*w/(w+h) + g2*h/(w+h)), (b1*w/(w+h) + b2*h/(w+h)), opacity), C2D_Color32((r1*h/(w+h) + r2*w/(w+h)), (g1*h/(w+h) + g2*w/(w+h)), (b1*h/(w+h) + b2*w/(w+h)), opacity), C2D_Color32(r2, g2, b2, opacity));
 	C2D_DrawRectSolid(x + p, y + p, 0, w - p * 2, h - p * 2, color);
@@ -80,6 +93,53 @@ int main(int argc, char **argv) {
 	u32 clrClear = C2D_Color32(0x1E, 0x1E, 0x2E, 0xFF);
 
 	while (aptMainLoop()) {
+
+		//fill predictions array with positions of boxes over next 10 frames
+		for (int i = 0; i < boxes; i++) {
+			for (int j = 0; j < 10; j++) {
+				if (j == 0) {
+					pred[i].pr[0].vy = box[i].vy + gravity;
+					pred[i].pr[0].vx = box[i].vx;
+					pred[i].pr[0].x = box[i].x + box[i].vx;
+					pred[i].pr[0].y = box[i].y + pred[i].pr[0].vy;
+					if (pred[i].pr[0].vx != 0) pred[i].pr[0].vx *= friction;
+					if (pred[i].pr[0].y < 0) {
+						pred[i].pr[0].vy = -pred[i].pr[0].vy * box[i].bounce;
+						pred[i].pr[0].y = 0;
+					} else if (pred[i].pr[0].y > S_HEIGHT - box[i].h) {
+						pred[i].pr[0].vy = -pred[i].pr[0].vy * box[i].bounce;
+						pred[i].pr[0].y = S_HEIGHT - box[i].h;
+					}
+					if (pred[i].pr[0].x < 0) {
+						pred[i].pr[0].vx = -pred[i].pr[0].vx * box[i].bounce;
+						pred[i].pr[0].x = 0;
+					} else if (pred[i].pr[0].x > S_WIDTH - box[i].w) {
+						pred[i].pr[0].vx = -pred[i].pr[0].vx * box[i].bounce;
+						pred[i].pr[0].x = S_WIDTH - box[i].w;
+					}
+				} else {
+					pred[i].pr[j].vy = pred[i].pr[j-1].vy + gravity;
+					pred[i].pr[j].vx = pred[i].pr[j-1].vx;
+					pred[i].pr[j].x = pred[i].pr[j-1].x + pred[i].pr[j].vx;
+					pred[i].pr[j].y = pred[i].pr[j-1].y + pred[i].pr[j].vy;
+					if (pred[i].pr[j].vx != 0) pred[i].pr[j].vx *= friction;
+					if (pred[i].pr[j].y < 0) {
+						pred[i].pr[j].vy = -pred[i].pr[j].vy * box[i].bounce;
+						pred[i].pr[j].y = 0;
+					} else if (pred[i].pr[j].y > S_HEIGHT - box[i].h) {
+						pred[i].pr[j].vy = -pred[i].pr[j].vy * box[i].bounce;
+						pred[i].pr[j].y = S_HEIGHT - box[i].h;
+					}
+					if (pred[i].pr[j].x < 0) {
+						pred[i].pr[j].vx = -pred[i].pr[j].vx * box[i].bounce;
+						pred[i].pr[j].x = 0;
+					} else if (pred[i].pr[j].x > S_WIDTH - box[i].w) {
+						pred[i].pr[j].vx = -pred[i].pr[j].vx * box[i].bounce;
+						pred[i].pr[j].x = S_WIDTH - box[i].w;
+					}
+				}
+			}
+		}
 
 		hidScanInput();
 		u32 kDown = hidKeysDown(); u32 kHeld = hidKeysHeld();// u32 kUp = hidKeysUp();
@@ -144,6 +204,29 @@ int main(int argc, char **argv) {
 					float dist = sqrt(difx * difx + dify * dify);
 					box[i].vx += ((difx / dist) * expForce) / dist * dist;
 					box[i].vy += ((dify / dist) * expForce) / dist * dist;
+				}
+				for (int j = 0; j < 9; j++) {
+					pred[i].pr[j] = pred[i].pr[j + 1];
+				}
+				// add new prediction
+				pred[i].pr[9].vy = pred[i].pr[8].vy + gravity;
+				pred[i].pr[9].vx = pred[i].pr[8].vx;
+				pred[i].pr[9].x = pred[i].pr[8].x + pred[i].pr[9].vx;
+				pred[i].pr[9].y = pred[i].pr[8].y + pred[i].pr[9].vy;
+				if (pred[i].pr[9].vx != 0) pred[i].pr[9].vx *= friction;
+				if (pred[i].pr[9].y + box[i].h > S_HEIGHT) {
+					pred[i].pr[9].y = S_HEIGHT - box[i].h;
+					pred[i].pr[9].vy = -pred[i].pr[9].vy * box[i].bounce;
+				} else if (pred[i].pr[9].y < 0) {
+					pred[i].pr[9].y = 0;
+					pred[i].pr[9].vy = -pred[i].pr[9].vy * box[i].bounce;
+				}
+				if (pred[i].pr[9].x + box[i].w > S_WIDTH) {
+					pred[i].pr[9].x = S_WIDTH - box[i].w;
+					pred[i].pr[9].vx = -pred[i].pr[9].vx * box[i].bounce;
+				} else if (pred[i].pr[9].x < 0) {
+					pred[i].pr[9].x = 0;
+					pred[i].pr[9].vx = -pred[i].pr[9].vx * box[i].bounce;
 				}
 			}
 		}
@@ -210,51 +293,17 @@ int main(int argc, char **argv) {
 		for (int i = 0; i < boxes; i++) {
 			drawGradientRect(box[i].x, box[i].y, box[i].w, box[i].h, 3, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
 			if (showPaths) {
-				object tempBox = box[i];
 				for (int j = 0; j < 10; j++) {
-					if (j == 0) {
-						C2D_DrawLine(
-							box[i].x + box[i].w / 2,
-							box[i].y + box[i].h / 2,
-							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
-							box[i].x + box[i].w / 2 + box[i].vx,
-							box[i].y + box[i].h / 2 + box[i].vy,
-							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
-							2.0f,
-							0
-						);
-					} else {
-						tempBox.x += tempBox.vx;
-						tempBox.y += tempBox.vy;
-						tempBox.vy += gravity;
-						if (tempBox.vx != 0) tempBox.vx *= friction;
-						if (tempBox.y + tempBox.h > S_HEIGHT) {
-							tempBox.y = S_HEIGHT - tempBox.h;
-							tempBox.vy = -tempBox.vy * tempBox.bounce;
-						}
-						if (tempBox.y < 0) {
-							tempBox.y = 0;
-							tempBox.vy = -tempBox.vy * tempBox.bounce;
-						}
-						if (tempBox.x + tempBox.w > S_WIDTH) {
-							tempBox.x = S_WIDTH - tempBox.w;
-							tempBox.vx = -tempBox.vx * tempBox.bounce;
-						}
-						if (tempBox.x < 0) {
-							tempBox.x = 0;
-							tempBox.vx = -tempBox.vx * tempBox.bounce;
-						}
-						C2D_DrawLine(
-							tempBox.x + tempBox.w / 2,
-							tempBox.y + tempBox.h / 2,
-							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
-							tempBox.x + tempBox.w / 2 + tempBox.vx,
-							tempBox.y + tempBox.h / 2 + tempBox.vy,
-							C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
-							2.0f,
-							0
-						);
-					}
+					C2D_DrawLine(
+						pred[i].pr[j].x + box[i].w / 2,
+						pred[i].pr[j].y + box[i].h / 2,
+						C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
+						pred[i].pr[j].x + box[i].w / 2 + pred[i].pr[j].vx,
+						pred[i].pr[j].y + box[i].h / 2 + pred[i].pr[j].vy,
+						C2D_Color32(0x00, 0xFF, 0x00, 0xFF),
+						2.0f,
+						0
+					);
 				}
 			}
 		}
