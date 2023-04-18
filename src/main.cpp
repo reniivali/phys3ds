@@ -38,6 +38,10 @@ struct coord {
 	float x, y;
 };
 
+struct rotRect {
+	coord tl, tr, bl, br;
+};
+
 crosshair cross = { S_WIDTH / 2, S_HEIGHT / 2 };
 
 void renderCrosshair() {
@@ -86,7 +90,7 @@ static float degToRad(float r) {
 	return rad;
 }
 
-static void drawRotatedRect(float x, float y, float w, float h, float r, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
+static rotRect drawRotatedRect(float x, float y, float w, float h, float r, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
 	float lx = x + w / 2;
 	float ly = y + h / 2;
 	coord corn[8] = {
@@ -171,6 +175,7 @@ int main(int argc, char **argv) {
 	while (aptMainLoop()) {
 		rot++;
 		if (rot > 360) rot = 0;
+		const rotRect curBox = drawRotatedRect(100, 100, 50, 50, degToRad(rot), 0, C2D_Color32(0x00, 0x00, 0x00, 0x00), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 		//fill predictions array with positions of boxes over next 10 frames
 		for (int i = 0; i < boxes; i++) {
 			for (int j = 0; j < 10; j++) {
@@ -330,6 +335,15 @@ int main(int argc, char **argv) {
 				box[i].x = 0;
 				box[i].vx = -box[i].vx * box[i].bounce;
 			}
+			//detect collision with rotating obstacles
+			const coord points[4] = {
+				{ box[i].x, box[i].y },
+				{ box[i].x + box[i].w, box[i].y },
+				{ box[i].x + box[i].w, box[i].y + box[i].h },
+				{ box[i].x, box[i].y + box[i].h }
+			};
+			if ()
+
 			// detect collision with other boxes
 			for (int j = 0; j < boxes; j++) {
 				if (i == j) continue;
@@ -387,6 +401,8 @@ int main(int argc, char **argv) {
 		C2D_TargetClear(top, clrClear);
 		C2D_SceneBegin(top);
 
+		drawRotatedRect(100, 100, 50, 50, degToRad(rot), 5, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
+
 		for (int i = 0; i < boxes; i++) {
 			drawGradientRect(box[i].x, box[i].y, box[i].w, box[i].h, 3, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
 			if (showPaths) {
@@ -404,8 +420,6 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
-
-		drawRotatedRect(100, 100, 50, 50, degToRad(rot), 5, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
 
 		renderCrosshair();
 
