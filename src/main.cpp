@@ -90,7 +90,7 @@ static float degToRad(float r) {
 	return rad;
 }
 
-static rotRect drawRotatedRect(float x, float y, float w, float h, float r, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity) {
+static rotRect drawRotatedRect(float x, float y, float w, float h, float r, float p, u32 color, int r1, int g1, int b1, int r2, int g2, int b2, int opacity, bool calc) {
 	float lx = x + w / 2;
 	float ly = y + h / 2;
 	coord corn[8] = {
@@ -121,39 +121,49 @@ static rotRect drawRotatedRect(float x, float y, float w, float h, float r, floa
 		{lx - ((w/2 - p) * cos(r)) + ((h/2 - p) * sin(r)),
 		 ly - ((w/2 - p) * sin(r)) - ((h/2 - p) * cos(r))}
 	};
-	//right triangle
-	C2D_DrawTriangle(
-		corn[0].x, corn[0].y, C2D_Color32(r1, g1, b1, opacity),
-		corn[1].x, corn[1].y, C2D_Color32(
-			(r1*w/(w+h) + r2*h/(w+h)),
-			(g1*w/(w+h) + g2*h/(w+h)),
-			(b1*w/(w+h) + b2*h/(w+h)),
-			opacity),
-		corn[2].x, corn[2].y, C2D_Color32(r2, g2, b2, opacity), 0
-	);
-	//left triangle
-	C2D_DrawTriangle(
-		corn[0].x, corn[0].y, C2D_Color32(r1, g1, b1, opacity),
-		corn[3].x, corn[3].y, C2D_Color32(
-			(r1*h/(w+h) + r2*w/(w+h)),
-			(g1*h/(w+h) + g2*w/(w+h)),
-			(b1*h/(w+h) + b2*w/(w+h)),
-			opacity),
-		corn[2].x, corn[2].y, C2D_Color32(r2, g2, b2, opacity), 0
-	);
+	if (!calc){
+		//right triangle
+		C2D_DrawTriangle(
+			corn[0].x, corn[0].y, C2D_Color32(r1, g1, b1, opacity),
+			corn[1].x, corn[1].y, C2D_Color32(
+				(r1 * w / (w + h) + r2 * h / (w + h)),
+				(g1 * w / (w + h) + g2 * h / (w + h)),
+				(b1 * w / (w + h) + b2 * h / (w + h)),
+				opacity),
+			corn[2].x, corn[2].y, C2D_Color32(r2, g2, b2, opacity), 0
+		);
+		//left triangle
+		C2D_DrawTriangle(
+			corn[0].x, corn[0].y, C2D_Color32(r1, g1, b1, opacity),
+			corn[3].x, corn[3].y, C2D_Color32(
+				(r1 * h / (w + h) + r2 * w / (w + h)),
+				(g1 * h / (w + h) + g2 * w / (w + h)),
+				(b1 * h / (w + h) + b2 * w / (w + h)),
+				opacity),
+			corn[2].x, corn[2].y, C2D_Color32(r2, g2, b2, opacity), 0
+		);
 
-	//right inner triangle
-	C2D_DrawTriangle(
-		corn[4].x, corn[4].y, color,
-		corn[5].x, corn[5].y, color,
-		corn[6].x, corn[6].y, color, 0
-	);
-	//left inner triangle
-	C2D_DrawTriangle(
-		corn[4].x, corn[4].y, color,
-		corn[7].x, corn[7].y, color,
-		corn[6].x, corn[6].y, color, 0
-	);
+		//right inner triangle
+		C2D_DrawTriangle(
+			corn[4].x, corn[4].y, color,
+			corn[5].x, corn[5].y, color,
+			corn[6].x, corn[6].y, color, 0
+		);
+		//left inner triangle
+		C2D_DrawTriangle(
+			corn[4].x, corn[4].y, color,
+			corn[7].x, corn[7].y, color,
+			corn[6].x, corn[6].y, color, 0
+		);
+		return {0,0,0,0,0,0,0,0};
+	} else {
+		return {
+			corn[0].x, corn[0].y,
+			corn[1].x, corn[1].y,
+			corn[3].x, corn[3].y,
+			corn[2].x, corn[2].y
+		};
+	}
 }
 
 float rot = -0.05f;
@@ -175,7 +185,7 @@ int main(int argc, char **argv) {
 	while (aptMainLoop()) {
 		rot++;
 		if (rot > 360) rot = 0;
-		const rotRect curBox = drawRotatedRect(100, 100, 50, 50, degToRad(rot), 0, C2D_Color32(0x00, 0x00, 0x00, 0x00), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+		const rotRect curBox = drawRotatedRect(100, 100, 50, 50, degToRad(rot), 0, 0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, true);
 		//fill predictions array with positions of boxes over next 10 frames
 		for (int i = 0; i < boxes; i++) {
 			for (int j = 0; j < 10; j++) {
@@ -342,7 +352,27 @@ int main(int argc, char **argv) {
 				{ box[i].x + box[i].w, box[i].y + box[i].h },
 				{ box[i].x, box[i].y + box[i].h }
 			};
-			if ()
+			coord lg[2] = {curBox.tl.x, curBox.tl.y, curBox.tl.x, curBox.tl.y};
+			//i couldn't think of a way to make this more efficient
+			if (curBox.tr.x < lg[0].x) lg[0].x = curBox.tr.x;
+			if (curBox.tr.y < lg[0].y) lg[0].y = curBox.tr.y;
+			if (curBox.tr.x > lg[1].x) lg[1].x = curBox.tr.x;
+			if (curBox.tr.y > lg[1].y) lg[1].y = curBox.tr.y;
+			if (curBox.bl.x < lg[0].x) lg[0].x = curBox.bl.x;
+			if (curBox.bl.y < lg[0].y) lg[0].y = curBox.bl.y;
+			if (curBox.bl.x > lg[1].x) lg[1].x = curBox.bl.x;
+			if (curBox.bl.y > lg[1].y) lg[1].y = curBox.bl.y;
+			if (curBox.br.x < lg[0].x) lg[0].x = curBox.br.x;
+			if (curBox.br.y < lg[0].y) lg[0].y = curBox.br.y;
+			if (curBox.br.x > lg[1].x) lg[1].x = curBox.br.x;
+			if (curBox.br.y > lg[1].y) lg[1].y = curBox.br.y;
+
+			for (int j = 0; j < 4; j++) {
+				if (points[j].x > lg[0].x && points[j].x < lg[1].x && points[j].y > lg[0].y && points[j].y < lg[1].y) {
+					//possible collision
+
+				}
+			}
 
 			// detect collision with other boxes
 			for (int j = 0; j < boxes; j++) {
@@ -401,7 +431,7 @@ int main(int argc, char **argv) {
 		C2D_TargetClear(top, clrClear);
 		C2D_SceneBegin(top);
 
-		drawRotatedRect(100, 100, 50, 50, degToRad(rot), 5, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
+		drawRotatedRect(100, 100, 50, 50, degToRad(rot), 5, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF, false);
 
 		for (int i = 0; i < boxes; i++) {
 			drawGradientRect(box[i].x, box[i].y, box[i].w, box[i].h, 3, C2D_Color32(0x18, 0x18, 0x28, 0xDD), 0xFA, 0xB3, 0x87, 0xF5, 0xC2, 0xE7, 0xFF);
