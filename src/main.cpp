@@ -48,15 +48,15 @@ float friction = 0.95f;
 
 int boxes = 9;
 object box[9] = {
-	{20, 20, 20, 20, 0, 0, 0, 0.9f, 10},
-	{50, 20, 30, 30, 0, 0, 0, 0.7f, 45},
-	{90, 20, 20, 20, 0, 0, 0, 0.9f, 10},
-	{120, 20, 30, 30, 0, 0, 0, 0.9f, 45},
-	{160, 20, 20, 20, 0, 0, 0, 0.9f, 10},
-	{190, 20, 30, 30, 0, 0, 0, 0.9f, 45},
-	{230, 20, 20, 20, 0, 0, 0, 0.9f, 10},
-	{260, 20, 30, 30, 0, 0, 0, 0.9f, 45},
-	{300, 20, 20, 20, 0, 0, 0, 0.9f, 10}//,
+	{20, 20, 20, 20, 0, 0, 0, 0.75f, 10},
+	{50, 20, 30, 30, 0, 0, 0, 0.75f, 45},
+	{90, 20, 20, 20, 0, 0, 0, 0.75f, 10},
+	{120, 20, 30, 30, 0, 0, 0, 0.75f, 45},
+	{160, 20, 20, 20, 0, 0, 0, 0.75f, 10},
+	{190, 20, 30, 30, 0, 0, 0, 0.75f, 45},
+	{230, 20, 20, 20, 0, 0, 0, 0.75f, 10},
+	{260, 20, 30, 30, 0, 0, 0, 0.75f, 45},
+	{300, 20, 20, 20, 0, 0, 0, 0.75f, 10}//,
 	/*{20, 100, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f},
 	{50, 20, 20, 20, 0, 0, 0, 0.9f, 10, 0.95f},
 	{90, 20, 30, 30, 0, 0, 0, 0.9f, 45, 0.95f},
@@ -98,10 +98,11 @@ int main(int argc, char **argv) {
 		for (int i = 0; i < boxes; i++) {
 			for (int j = 0; j < 10; j++) {
 				if (j == 0) {
-					pred[i].pr[0].vy = box[i].vy + gravity;
+					pred[i].pr[0].vy = box[i].vy;
 					pred[i].pr[0].vx = box[i].vx;
 					pred[i].pr[0].x = box[i].x + box[i].vx;
 					pred[i].pr[0].y = box[i].y + pred[i].pr[0].vy;
+					pred[i].pr[j].vy += gravity;
 					if (pred[i].pr[0].vx != 0) pred[i].pr[0].vx *= friction;
 					if (pred[i].pr[0].y < 0) {
 						pred[i].pr[0].vy = -pred[i].pr[0].vy * box[i].bounce;
@@ -118,10 +119,11 @@ int main(int argc, char **argv) {
 						pred[i].pr[0].x = S_WIDTH - box[i].w;
 					}
 				} else {
-					pred[i].pr[j].vy = pred[i].pr[j-1].vy + gravity;
+					pred[i].pr[j].vy = pred[i].pr[j-1].vy;
 					pred[i].pr[j].vx = pred[i].pr[j-1].vx;
 					pred[i].pr[j].x = pred[i].pr[j-1].x + pred[i].pr[j].vx;
 					pred[i].pr[j].y = pred[i].pr[j-1].y + pred[i].pr[j].vy;
+					pred[i].pr[j].vy += gravity;
 					if (pred[i].pr[j].vx != 0) pred[i].pr[j].vx *= friction;
 					if (pred[i].pr[j].y < 0) {
 						pred[i].pr[j].vy = -pred[i].pr[j].vy * box[i].bounce;
@@ -190,11 +192,10 @@ int main(int argc, char **argv) {
 		// calculate physics
 		if (!paused) {
 			for (int i = 0; i < boxes; i++) {
-				box[i].vy += gravity;
-
 				box[i].x += box[i].vx;
 				box[i].y += box[i].vy;
 
+				box[i].vy += gravity;
 				if (box[i].vx != 0) box[i].vx *= friction;
 
 				if (kDown & KEY_R) {
@@ -235,7 +236,10 @@ int main(int argc, char **argv) {
 			// OFFSCREEN COLLISION - KEEP AT BOTTOM
 			if (box[i].y + box[i].h > S_HEIGHT) {
 				box[i].y = S_HEIGHT - box[i].h;
-				box[i].vy = -box[i].vy * box[i].bounce;
+				if (box[i].vy > 5)
+					box[i].vy = -box[i].vy * box[i].bounce;
+				else
+					box[i].vy = 0;
 			}
 			if (box[i].y < 0) {
 				box[i].y = 0;
